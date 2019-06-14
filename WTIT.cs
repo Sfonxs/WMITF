@@ -133,7 +133,8 @@ namespace WTIT
 			{
 				if(Main.dedServ || !DisplayWorldTooltips)
 					return;
-				MouseText = String.Empty;
+
+                MouseText = String.Empty;
 				SecondLine = false;
 				var modLoaderMod = ModLoader.GetMod("ModLoader");
 				
@@ -141,6 +142,8 @@ namespace WTIT
                 
                 if (tile != null)
                 {
+                    InitializeTileTypes();
+
                     var modTile = TileLoader.GetTile(tile.type);
                     var name = "";
                     if (modTile != null)
@@ -151,8 +154,7 @@ namespace WTIT
                     {
                         _tileTypeToName.TryGetValue(tile.type, out name);
                     }
-                    MouseText = name;
-
+                    MouseText = "Tile: " + name;
                 }
             }
         }
