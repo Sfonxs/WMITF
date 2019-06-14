@@ -41,7 +41,7 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="Terraria">
-      <HintPath>..\..\..\..\Steam\SteamApps\common\Terraria\Terraria.exe</HintPath>
+      <HintPath>E:\Games\SteamLibrary\steamapps\common\Terraria\Terraria.exe</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -51,7 +51,7 @@
     <None Include="Localization\ru-RU.lang" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="WMITF.cs" />
+    <Compile Include="WTIT.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

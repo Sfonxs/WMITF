@@ -15,25 +15,25 @@ using Terraria.UI;
 using Terraria.UI.Chat;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria.Localization;
+using System.Reflection;
+using System.Linq;
 
-namespace WMITF
+namespace WTIT
 {
-	public class WMITF : Mod
+	public class WTIT : Mod
 	{
 		static string MouseText;
 		static bool SecondLine;
 		static ModHotKey ToggleTooltipsHotkey;
-		static ModHotKey TechnicalNamesHotkey;
 		static bool DisplayWorldTooltips = false;
 		static bool DisplayItemTooltips = true;
 		static bool DisplayTechnicalNames = false;
 		
-		static Preferences Configuration = new Preferences(Path.Combine(Main.SavePath, "Mod Configs", "WMITF.json"));
+		static Preferences Configuration = new Preferences(Path.Combine(Main.SavePath, "Mod Configs", "WTIT.json"));
 
 		public override void Load()
 		{
 			ToggleTooltipsHotkey = RegisterHotKey("Tile/NPC Mod Tooltip", "OemQuestion");
-			TechnicalNamesHotkey = RegisterHotKey("Technical Names", "N");
 			if(!ReadConfig())
 			{
 				SetConfigDefaults();
@@ -83,35 +83,49 @@ namespace WMITF
 
 		public class WorldTooltips : ModPlayer
 		{
-			public override void ProcessTriggers(TriggersSet triggersSet)
+            private readonly Dictionary<ushort, string> _tileTypeToName = new Dictionary<ushort, string>();
+
+            public void InitializeTileTypes()
+            {
+                if (_tileTypeToName.Count != 0)
+                {
+                    return;
+                }
+
+                var tileId = new TileID();
+                var tileIdType = typeof(TileID);
+                foreach(var member in GetConstants(tileIdType))
+                {
+                    var name = member.Name;
+                    var value = (ushort)member.GetValue(new TileID());
+                    
+                    _tileTypeToName[value] = name;
+                }
+            }
+
+            private List<FieldInfo> GetConstants(Type type)
+            {
+                FieldInfo[] fieldInfos = type.GetFields(BindingFlags.Public |
+                     BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+                return fieldInfos.Where(fi => fi.IsLiteral && !fi.IsInitOnly).ToList();
+            }
+
+            public override void ProcessTriggers(TriggersSet triggersSet)
 			{
 				if(ToggleTooltipsHotkey.JustPressed)
 				{
 					if(DisplayWorldTooltips)
 					{
 						DisplayWorldTooltips = false;
-						Main.NewText(Language.GetTextValue("Mods.WMITF.WorldTooltipsOff"));
+						Main.NewText(Language.GetTextValue("Mods.WTIT.WorldTooltipsOff"));
 					}
 					else
 					{
 						DisplayWorldTooltips = true;
-						Main.NewText(Language.GetTextValue("Mods.WMITF.WorldTooltipsOn"));
+						Main.NewText(Language.GetTextValue("Mods.WTIT.WorldTooltipsOn"));
 					}
 					Configuration.Put("DisplayWorldTooltips", DisplayWorldTooltips);
-				}
-				if(TechnicalNamesHotkey.JustPressed)
-				{
-					if(DisplayTechnicalNames)
-					{
-						DisplayTechnicalNames = false;
-						Main.NewText(Language.GetTextValue("Mods.WMITF.TechNamesOff"));
-					}
-					else
-					{
-						DisplayTechnicalNames = true;
-						Main.NewText(Language.GetTextValue("Mods.WMITF.TechNamesOn"));
-					}
-					Configuration.Put("DisplayTechnicalNames", DisplayTechnicalNames);
 				}
 			}
 			
@@ -121,52 +135,27 @@ namespace WMITF
 					return;
 				MouseText = String.Empty;
 				SecondLine = false;
-				var modLoaderMod = ModLoader.GetMod("ModLoader"); //modmodloadermodmodloadermodmodloader
-				int mysteryTile = modLoaderMod.TileType("MysteryTile");
-				int mysteryTile2 = modLoaderMod.TileType("PendingMysteryTile");
+				var modLoaderMod = ModLoader.GetMod("ModLoader");
 				
 				var tile = Main.tile[Player.tileTargetX, Player.tileTargetY];
-				if(tile != null)
-				{
-					if(tile.active() && tile.type != mysteryTile && tile.type != mysteryTile2)
-					{
-						var modTile = TileLoader.GetTile(tile.type);
-						if(modTile != null)
-						{
-							MouseText = DisplayTechnicalNames ? (modTile.mod.Name + ":" + modTile.Name) : modTile.mod.DisplayName;
-						}
-					}
-					else
-					{
-						var modWall = WallLoader.GetWall(tile.wall);
-						if(modWall != null)
-						{
-							MouseText = DisplayTechnicalNames ? (modWall.mod.Name + ":" + modWall.Name) : modWall.mod.DisplayName;
-						}
-					}
-				}
-				
-				var mousePos = Main.MouseWorld;
-				for(int i = 0; i < Main.maxNPCs; i++)
-				{
-					var npc = Main.npc[i];
-					if(mousePos.Between(npc.TopLeft, npc.BottomRight))
-					{
-						var modNPC = NPCLoader.GetNPC(npc.type);
-						if(modNPC != null && npc.active && !NPCID.Sets.ProjectileNPC[npc.type])
-						{
-							MouseText = DisplayTechnicalNames ? (modNPC.mod.Name + ":" + modNPC.Name) : modNPC.mod.DisplayName;
-							SecondLine = true;
-							break;
-						}
-					}
-				}
-				if(MouseText != String.Empty && Main.mouseText)
-				{
-					SecondLine = true;
-				}
-			}
-		}
+                
+                if (tile != null)
+                {
+                    var modTile = TileLoader.GetTile(tile.type);
+                    var name = "";
+                    if (modTile != null)
+                    {
+                        name = modTile.Name;
+                    }
+                    if (name == "")
+                    {
+                        _tileTypeToName.TryGetValue(tile.type, out name);
+                    }
+                    MouseText = name;
+
+                }
+            }
+        }
 
 		public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
 		{
@@ -225,10 +214,10 @@ namespace WMITF
 
 		#region Hamstar's Mod Helpers integration
 
-		public static string GithubUserName { get { return "goldenapple3"; } }
-		public static string GithubProjectName { get { return "WMITF"; } }
+		public static string GithubUserName { get { return "Sfonxs"; } }
+		public static string GithubProjectName { get { return "WTIT"; } }
 
-		public static string ConfigFileRelativePath { get { return "Mod Configs/WMITF.json"; } }
+		public static string ConfigFileRelativePath { get { return "Mod Configs/WTIT.json"; } }
 
 		public static void ReloadConfigFromFile()
 		{
